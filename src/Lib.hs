@@ -1,45 +1,43 @@
 module Lib where
-
-{-
-
-https://www.reddit.com/r/haskellquestions/comments/5dinqr/creating_my_own_monad_to_hide_a_global_variable/
-
-newtype TimerState s a = TimerState { runState :: s -> (a, s) }
-
--- Functor on a state will get the current state and then apply f to the val of the state
-instance Functor (TimerState s) where
-    fmap f sa = TimerState $ \s -> 
-        let (a, s') = runState sa s
-        in (f a, s')
-
--- TODO I dont get this???????
-instance Applicative (TimerState s) where
-    pure a = TimerState $ \s -> (a, s)
-    (<*>) :: TimerState s (a -> b) -> TimerState s a -> TimerState s b
-    TimerState s'a2b <*> TimerState s'a =
-        TimerState $ \s ->
-            let (f, s' ) = s'a2b s
-                (a, s'') = s'a   s'
-            in  (f a, s'')
-
-instance Monad (TimerState s) where
-    return = pure
-    sa >>= f =
-        TimerState $ \s ->
-            let (a, s')  = runState sa s
-                sb       = f a
-                (b, s'') = runState sb s'
-            in  (b, s'')
-
--}
-
+    
 import System.CPUTime
 
 data Timing = Timing
     { tStart :: Maybe Integer
     , tEnd   :: Maybe Integer
+    , label  :: Maybe String
     }
-    deriving (Show)
+
+instance Show Timing where
+    show timing@(Timing{label=tLabel}) = 
+        ( header tLabel
+        . formatter) timing
+        where   header label s =
+                    let labelstr = 
+                            case label of
+                                Just sLabel -> 
+                                    sLabel ++ "\n"
+                                    ++ "----------\n"
+                                _ -> "" 
+                    in
+                        "**********\n" 
+                        ++ labelstr
+                        ++ s 
+                        ++ "**********\n"
+
+                formatter Timing{tStart=(Just tStartPS), tEnd=(Just tEndPS)} =
+                    "Run Completed!\n"
+                    ++ "start: " ++ show tStartPS                            ++ "ps\n"
+                    ++ "end: "   ++ show tEndPS                              ++ "ps\n"
+                    ++ "dtime: " ++ ((show . ps_to_ms) (tEndPS - tStartPS))  ++ "ms\n"
+                formatter Timing{tStart=tStartPS, tEnd=tEndPS} = 
+                    "Run Incomplete!\n"
+                    ++ "start: " ++ show tStartPS ++ "ps\n"
+                    ++ "end: "   ++ show tEndPS   ++ "ps\n"
+                    ++ "dtime: " ++      "N/A"    ++ "\n"
+                ps_to_ms :: Integer -> Float
+                ps_to_ms ps = (fromIntegral ps :: Float) / (1000000000 :: Float) --divide
+            
 
 data Environment = Environment
     { cpuTime :: Timing
@@ -72,4 +70,4 @@ instance Monad (TimerState) where
             (a, env')  <- runState enva env
             let envb   =  f a
             (b, env'') <- runState envb env'
-            pure (b, env'')
+            return (b, env'')
