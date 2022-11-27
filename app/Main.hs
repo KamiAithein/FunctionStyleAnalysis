@@ -43,9 +43,9 @@ data BenchError = InvalidArgs String
 
 instance Exception BenchError
 
-timeMain :: (() -> IO (ExitCode, String, String)) -> IO (Either BenchError Timing)
-timeMain toTime = do
-    let timing_0 = newTiming "Factorial 1"
+timeMain :: String -> (() -> IO (ExitCode, String, String)) -> IO (Either BenchError Timing)
+timeMain label toTime = do
+    let timing_0 = newTiming label
     let timer = newTimer
     (timing_1, env) <- do
         (runState timer) $ envFrom timing_0
@@ -69,7 +69,7 @@ main = do
     case validateArgs args of
             (Left err) -> throw err
             (Right (bin:rest)) -> do
-                    timing <- timeMain (\() -> 
+                    timing <- timeMain "Process Name" (\() -> 
                             readProcessWithExitCode bin rest []
                             )
                     case timing of
